@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head id="head-root">
+  <meta charset="utf-8" id="meta-charset">
+  <meta name="viewport" content="width=device-width, initial-scale=1" id="meta-viewport">
+  <meta name="theme-color" content="#6a00ff" id="meta-theme-color">
+  <title id="title-text">SynthX — Server Update</title>
+
+  <style id="style-global">
+    :root{
+      --bg1:#0b0f1c; --bg2:#0a0720;
+      --neon1:#6a00ff; --neon2:#00d1ff;
+      --text:#e9f1ff; --muted:#9fb3c8;
+      --card:rgba(14,18,36,.6); --glass:rgba(255,255,255,.06);
+      --ring:rgba(106,0,255,.55); --ring2:rgba(0,209,255,.45);
+      --shadow:0 10px 40px rgba(0,0,0,.55);
+      --ok:#46e0a1; --warn:#ffd166;
+    }
+    *[id]{box-sizing:border-box}
+
+    html[id="html-root"], body[id="body-root"]{
+      height:100%; margin:0; overflow:hidden; color:var(--text);
+      background:radial-gradient(1200px 800px at 20% 10%,#0e1530 0%,var(--bg1) 50%,var(--bg2) 100%);
+      font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    /* background vibes */
+    #bg-anim{position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(1000px 800px at 80% 120%, rgba(0,209,255,.15), transparent 60%),
+        radial-gradient(900px 700px at -10% -10%, rgba(106,0,255,.25), transparent 60%),
+        radial-gradient(700px 500px at 110% 20%, rgba(0,209,255,.12), transparent 60%);
+      filter:saturate(120%); animation:floatGlow 18s ease-in-out infinite alternate}
+    @keyframes floatGlow{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,-20px,0) scale(1.02)}}
+    #bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.22;mix-blend-mode:overlay;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,.05), transparent 35%),
+        repeating-linear-gradient(to right, rgba(255,255,255,.06) 0 1px, transparent 1px 80px),
+        repeating-linear-gradient(to bottom, rgba(255,255,255,.06) 0 1px, transparent 1px 80px)
+    }
+
+    /* floating page particles (canvas is behind everything) */
+    #bg-particles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;filter:saturate(120%)}
+
+    /* layout */
+    #page-wrap{position:relative;z-index:2;height:100%;display:grid;place-items:center;padding:24px}
+
+    /* card (no hover/tilt) */
+    #card{
+      width:min(860px,92vw); border-radius:22px;
+      background:linear-gradient(180deg,var(--card),rgba(10,12,24,.5));
+      backdrop-filter:blur(12px); box-shadow:var(--shadow);
+      position:relative; overflow:hidden; transform-style:flat;
+    }
+    #ring-deco{position:absolute;inset:-2px;border-radius:24px;pointer-events:none;z-index:1;filter:blur(18px);opacity:.55;
+      background:conic-gradient(from 220deg at 50% 50%,var(--ring),var(--ring2),transparent 60%),linear-gradient(var(--glass),var(--glass));
+      animation:ringSpin 10s linear infinite}
+    @keyframes ringSpin{to{transform:rotate(1turn)}}
+
+    #card-inner{position:relative;z-index:2;padding:clamp(28px,4vw,44px)}
+    #logo-row{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+    #logo-badge{width:52px;height:52px;border-radius:14px;background:
+      radial-gradient(70% 70% at 30% 30%,var(--neon2),transparent 60%),
+      radial-gradient(70% 70% at 70% 70%,var(--neon1),transparent 60%),#0f1430;
+      box-shadow:0 0 24px rgba(0,209,255,.5), inset 0 0 22px rgba(106,0,255,.35)}
+    #brand{font-weight:800;letter-spacing:.4px;font-size:1.1rem;color:#d8e7ff;text-transform:uppercase;opacity:.9}
+
+    #title{font-size:clamp(30px,5vw,44px);line-height:1.05;margin:8px 0 10px 0;
+      text-shadow:0 0 20px rgba(0,209,255,.35),0 0 40px rgba(106,0,255,.25)}
+    #subtitle{font-size:clamp(16px,2.3vw,18px);color:var(--muted);margin:0 0 22px 0}
+
+    /* status */
+    #status-wrap{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;margin:18px 0 26px 0;border-radius:12px;
+      background:linear-gradient(180deg,rgba(0,209,255,.08),rgba(106,0,255,.08));border:1px solid rgba(120,160,255,.2)}
+    #led{width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#00f0ff,#0077ff 60%);
+      box-shadow:0 0 10px #00d1ff,0 0 25px #6a00ff;animation:pulse 1.6s ease-in-out infinite}
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.15);opacity:1}}
+    #status-row{display:flex;align-items:center;gap:6px}
+    #status{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;white-space:nowrap}
+    #caret{width:8px;text-align:center;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;opacity:.8}
+    #caret::before{content:"|"} @keyframes caretBlink{50%{opacity:0}} #caret{animation:caretBlink 760ms steps(1) infinite}
+
+    /* buttons */
+    #btn-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+    #btn-discord{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      padding:14px 18px;border-radius:14px;border:1px solid rgba(120,160,255,.25);
+      background:linear-gradient(180deg,rgba(0,209,255,.12),rgba(106,0,255,.12));
+      color:var(--text);text-decoration:none;font-weight:700;letter-spacing:.3px;cursor:pointer;overflow:hidden;transform:translateZ(0);
+      transition:transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease}
+    #btn-discord:hover{transform:translateY(-1px);border-color:rgba(180,210,255,.5);
+      box-shadow:0 10px 30px rgba(0,209,255,.18),0 6px 18px rgba(106,0,255,.18)}
+    #btn-discord.highlighting{animation:discordPulse 1.2s ease-out 1}
+    @keyframes discordPulse{
+      0%{box-shadow:0 0 0 0 rgba(0,209,255,0),0 0 0 0 rgba(106,0,255,0)}
+      40%{box-shadow:0 0 24px rgba(0,209,255,.45),0 0 44px rgba(106,0,255,.35);transform:translateY(-1px) scale(1.01)}
+      100%{box-shadow:0 0 0 0 rgba(0,209,255,0),0 0 0 0 rgba(106,0,255,0);transform:translateY(0) scale(1)}
+    }
+    #btn-particles{position:absolute;inset:0;pointer-events:none}
+    .btn-particle[id]{position:absolute;width:6px;height:6px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%,var(--neon2),var(--neon1));
+      box-shadow:0 0 10px var(--neon2),0 0 18px var(--neon1);opacity:.95;transform:translate(-50%,-50%);
+      animation:btnBurst 900ms ease-out forwards}
+    @keyframes btnBurst{
+      0%{transform:translate(-50%,-50%) scale(.7);opacity:1}
+      100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.2);opacity:0}
+    }
+
+    /* clicker */
+    #game-wrap{margin-top:26px}
+    #game-title{margin:0 0 8px 0;font-size:15px;color:#cfe6ff;opacity:.9}
+    #clicker-row{display:grid;grid-template-columns: 1fr 260px; gap:16px; align-items:start}
+    @media (max-width:760px){ #clicker-row{grid-template-columns:1fr} }
+
+    #clicker-left{display:flex;flex-direction:column;gap:12px}
+    #clicker-target-wrap{position:relative;display:grid;place-items:center;border-radius:16px;
+      border:1px solid rgba(120,160,255,.25); overflow:hidden;
+      background:radial-gradient(900px 600px at 30% 40%, rgba(0,209,255,.06), rgba(106,0,255,.06))}
+    #clicker-target{all:unset; cursor:pointer; position:relative;
+      width:min(460px, 78vw); aspect-ratio:1/1; border-radius:50%;
+      background:
+        radial-gradient(60% 60% at 35% 30%, rgba(0,209,255,.25), rgba(0,209,255,.0) 70%),
+        radial-gradient(60% 60% at 70% 70%, rgba(106,0,255,.25), rgba(106,0,255,.0) 70%),
+        linear-gradient(135deg, rgba(0,209,255,.18), rgba(106,0,255,.18));
+      box-shadow:
+        inset 0 0 40px rgba(0,209,255,.25),
+        inset 0 0 70px rgba(106,0,255,.22),
+        0 20px 60px rgba(0,0,0,.35);
+      display:grid; place-items:center;
+      transition: transform 80ms ease;
+    }
+    #clicker-target:active{ transform:scale(.985) }
+    #clicker-core{width:46%; aspect-ratio:1/1; border-radius:50%;
+      background:radial-gradient(circle at 50% 50%, #bff6ff 0%, #00caff 40%, #6a00ff 100%);
+      box-shadow:0 0 30px rgba(0,209,255,.55), 0 0 60px rgba(106,0,255,.45);
+      filter:saturate(120%) contrast(105%);
+    }
+    #clicker-floaters{position:absolute; inset:0; pointer-events:none}
+    .float-label[id]{position:absolute; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:14px;
+      color:#c6f3ff; text-shadow:0 0 8px rgba(0,209,255,.5); user-select:none; opacity:0; animation:floatUp 900ms ease-out forwards}
+    @keyframes floatUp{
+      0%{ transform:translate(-50%, -10px); opacity:0 }
+      20%{ opacity:1 }
+      100%{ transform:translate(-50%, -60px); opacity:0 }
+    }
+
+    #stats-row{display:flex; gap:14px; flex-wrap:wrap}
+    .stat-chip[id]{padding:8px 10px; border-radius:12px; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      background:rgba(255,255,255,.05); border:1px solid rgba(120,160,255,.25)}
+
+    #shop-wrap{border:1px solid rgba(120,160,255,.25); border-radius:16px; padding:12px; background:rgba(255,255,255,.03)}
+    #shop-title{margin:0 0 8px 0; font-size:14px; color:#d6ecff; opacity:.95}
+    #shop-items{display:flex; flex-direction:column; gap:8px}
+    .shop-item[id]{display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:10px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(120,160,255,.2)}
+    .shop-info[id]{display:flex; flex-direction:column}
+    .shop-name[id]{font-weight:700; font-size:14px}
+    .shop-desc[id]{font-size:12px; color:var(--muted)}
+    .shop-btn[id]{padding:8px 10px; border-radius:10px; border:1px solid rgba(120,160,255,.25); background:rgba(0,209,255,.12);
+      color:var(--text); cursor:pointer; font-weight:700}
+    .shop-btn[id][disabled]{opacity:.45; cursor:not-allowed; filter:grayscale(.2)}
+
+    #footer{margin-top:28px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px;opacity:.85}
+    #ping-dot{width:6px;height:6px;border-radius:50%;background:#00d1ff;box-shadow:0 0 12px #00d1ff;animation:blink 1.8s ease-in-out infinite}
+    @keyframes blink{50%{opacity:.3}}
+
+    /* loose sparks layer (click + mouse trail) */
+    #spark-layer{position:fixed;inset:0;pointer-events:none;z-index:3}
+    .spark[id]{position:absolute;width:8px;height:8px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%,var(--neon2),var(--neon1));
+      box-shadow:0 0 10px var(--neon2),0 0 18px var(--neon1);opacity:.95;transform:translate(-50%,-50%);
+      animation:sparkFly 900ms ease-out forwards}
+    @keyframes sparkFly{
+      0%{transform:translate(-50%,-50%) scale(.8);opacity:1}
+      100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.2);opacity:0}
+    }
+
+    @media (max-width:420px){
+      #status-wrap{width:100%}
+      #btn-row{width:100%}
+      #btn-discord{flex:1 1 auto}
+    }
+  </style>
+</head>
+
+<body id="body-root" aria-live="polite">
+  <!-- background layers -->
+  <canvas id="bg-particles"></canvas>
+  <div id="bg-anim" aria-hidden="true"></div>
+  <div id="bg-grid" aria-hidden="true"></div>
+  <div id="spark-layer" aria-hidden="true"></div>
+
+  <main id="page-wrap">
+    <section id="card" aria-label="SynthX server status modal">
+      <div id="ring-deco"></div>
+      <div id="card-inner">
+        <div id="logo-row">
+          <div id="logo-badge" aria-hidden="true"></div>
+          <div id="brand">SynthX</div>
+        </div>
+
+        <h1 id="title">servers are upgrading ⚙️</h1>
+        <p id="subtitle">
+          we’re performing infrastructure changes to level up stability and performance.
+          a new update is on the way soon. thanks for your patience.
+        </p>
+
+        <div id="status-wrap" aria-label="update status">
+          <div id="led" aria-hidden="true"></div>
+          <div id="status-row">
+            <div id="status" aria-live="polite"></div>
+            <div id="caret" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div id="btn-row">
+          <a id="btn-discord" href="https://discord.gg/ATTGqt72kz" target="_blank" rel="noopener noreferrer" aria-label="join our discord">
+            <svg id="icon-discord" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+              <path id="icon-discord-path" fill="currentColor" d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3c-.2.36-.43.84-.589 1.22a18.27 18.27 0 0 0-7.938 0A9.76 9.76 0 0 0 7.442 3a19.86 19.86 0 0 0-3.76 1.369C1.24 9.06.45 13.623.82 18.136A19.9 19.9 0 0 0 6 20.25c.44-.6.833-1.24 1.177-1.91c-.65-.25-1.27-.56-1.85-.93c.154-.11.305-.224.45-.34c3.58 1.66 7.46 1.66 11.02 0c.147.117.298.231.452.34c-.583.373-1.203.683-1.855.93c.342.67.737 1.313 1.18 1.91a19.8 19.8 0 0 0 5.177-2.114c.43-5.045-.41-9.58-2.437-13.753zM8.72 14.58c-1.07 0-1.94-.98-1.94-2.18c0-1.2.86-2.19 1.94-2.19c1.09 0 1.96.99 1.95 2.19c0 1.2-.86 2.18-1.95 2.18zm6.56 0c-1.08 0-1.95-.98-1.95-2.18c0-1.2.87-2.19 1.95-2.19s1.94.99 1.94 2.19c0 1.2-.86 2.18-1.94 2.18z"/>
+            </svg>
+            <span id="btn-discord-text">join the discord</span>
+            <span id="btn-particles" aria-hidden="true"></span>
+          </a>
+        </div>
+
+        <!-- CLICKER -->
+        <div id="game-wrap" aria-label="Clicker mini game">
+          <h3 id="game-title">synthx clicker</h3>
+          <div id="clicker-row">
+            <div id="clicker-left">
+              <div id="clicker-target-wrap">
+                <button id="clicker-target" aria-label="click to harvest prisms">
+                  <div id="clicker-core" aria-hidden="true"></div>
+                </button>
+                <div id="clicker-floaters" aria-hidden="true"></div>
+              </div>
+
+              <div id="stats-row">
+                <div id="stat-score" class="stat-chip">score: <span id="score-num">0</span></div>
+                <div id="stat-cps" class="stat-chip">cps: <span id="cps-num">0</span></div>
+                <div id="stat-pc" class="stat-chip">per click: <span id="pc-num">1</span></div>
+              </div>
+            </div>
+
+            <aside id="shop-wrap" aria-label="shop">
+              <div id="shop-title">upgrades</div>
+              <div id="shop-items">
+                <div id="shop-item1" class="shop-item">
+                  <div id="shop1-info" class="shop-info">
+                    <div id="shop1-name" class="shop-name">auto miner</div>
+                    <div id="shop1-desc" class="shop-desc">+1 cps. passive income</div>
+                  </div>
+                  <button id="shop1-btn" class="shop-btn">buy <span id="shop1-cost">10</span></button>
+                </div>
+
+                <div id="shop-item2" class="shop-item">
+                  <div id="shop2-info" class="shop-info">
+                    <div id="shop2-name" class="shop-name">click booster</div>
+                    <div id="shop2-desc" class="shop-desc">+1 per click</div>
+                  </div>
+                  <button id="shop2-btn" class="shop-btn">buy <span id="shop2-cost">15</span></button>
+                </div>
+
+                <div id="shop-item3" class="shop-item">
+                  <div id="shop3-info" class="shop-info">
+                    <div id="shop3-name" class="shop-name">overclock</div>
+                    <div id="shop3-desc" class="shop-desc">+10% cps</div>
+                  </div>
+                  <button id="shop3-btn" class="shop-btn">buy <span id="shop3-cost">50</span></button>
+                </div>
+
+                <div id="shop-item4" class="shop-item">
+                  <div id="shop4-info" class="shop-info">
+                    <div id="shop4-name" class="shop-name">core condenser</div>
+                    <div id="shop4-desc" class="shop-desc">x2 per click (multiplicative)</div>
+                  </div>
+                  <button id="shop4-btn" class="shop-btn">buy <span id="shop4-cost">200</span></button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <div id="footer">
+          <div id="ping-dot" aria-hidden="true"></div>
+          <span id="footer-text">stay tuned for more updates. we’ll post news on discord first</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script id="script-main">
+    /* background floating particles */
+    (function bgParticles(){
+      const canvas=document.getElementById('bg-particles');
+      const ctx=canvas.getContext('2d');
+      let dpr=window.devicePixelRatio||1;
+      let W=0,H=0, running=true, last=performance.now();
+      const N=100; // particle count
+      const parts=[];
+      function rand(a,b){ return Math.random()*(b-a)+a }
+      function resize(){
+        W=canvas.clientWidth=window.innerWidth;
+        H=canvas.clientHeight=window.innerHeight;
+        canvas.width=Math.floor(W*dpr); canvas.height=Math.floor(H*dpr);
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+      function init(){
+        parts.length=0;
+        for(let i=0;i<N;i++){
+          const speed=rand(12,38);
+          parts.push({
+            id:'p'+i, x:rand(0,W), y:rand(0,H),
+            vx:rand(-1,1)*speed/60, vy:rand(-1,1)*speed/60,
+            r:rand(1,2.2),
+            hue: rand(180, 280) // cyan to purple
+          });
+        }
+      }
+      function step(t){
+        const dt=Math.min(0.033,(t-last)/1000); last=t;
+        if(running){ update(dt); draw(); }
+        requestAnimationFrame(step);
+      }
+      function update(dt){
+        for(const p of parts){
+          p.x+=p.vx; p.y+=p.vy;
+          if(p.x<-10) p.x=W+10; if(p.x>W+10) p.x=-10;
+          if(p.y<-10) p.y=H+10; if(p.y>H+10) p.y=-10;
+        }
+      }
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        for(const p of parts){
+          ctx.globalAlpha=0.9;
+          const grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*6);
+          grad.addColorStop(0, `hsla(${p.hue}, 100%, 70%, .9)`);
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle=grad;
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2); ctx.fill();
+        }
+      }
+      window.addEventListener('resize', ()=>{ resize(); init(); });
+      document.addEventListener('visibilitychange',()=>{ running=(document.visibilityState==='visible'); last=performance.now(); });
+      resize(); init(); requestAnimationFrame(step);
+    })();
+
+    /* ambient mouse sparks */
+    (function initSparks(){
+      const layer=document.getElementById('spark-layer'); const cap=18; let count=0;
+      function spawn(e){
+        if(count>cap) return;
+        const s=document.createElement('div'); s.id='spark-'+Math.random().toString(36).slice(2); s.className='spark';
+        const dx=(Math.random()*120-60)+'px'; const dy=(Math.random()*120-60)+'px';
+        s.style.setProperty('--dx',dx); s.style.setProperty('--dy',dy);
+        s.style.left=e.clientX+'px'; s.style.top=e.clientY+'px';
+        layer.appendChild(s); count++; setTimeout(()=>{s.remove();count--},900);
+      }
+      window.addEventListener('pointermove',e=>{ if(e.pointerType==='mouse') spawn(e) }, {passive:true});
+      window.addEventListener('click',spawn,{passive:true});
+    })();
+
+    /* Discord highlight + particles */
+    (function discordFX(){
+      const btn=document.getElementById('btn-discord');
+      const swarm=document.getElementById('btn-particles');
+      function ping(){
+        btn.classList.add('highlighting');
+        setTimeout(()=>btn.classList.remove('highlighting'),1200);
+        burst(12);
+      }
+      function burst(n){
+        const rect=btn.getBoundingClientRect();
+        for(let i=0;i<n;i++){
+          const p=document.createElement('span');
+          p.id='btnp-'+Math.random().toString(36).slice(2);
+          p.className='btn-particle';
+          const angle=Math.random()*Math.PI*2;
+          const dist=16+Math.random()*36;
+          const dx=Math.cos(angle)*dist+'px';
+          const dy=Math.sin(angle)*dist+'px';
+          p.style.setProperty('--dx',dx);
+          p.style.setProperty('--dy',dy);
+          p.style.left=(rect.width/2 + (Math.random()*20-10))+'px';
+          p.style.top=(rect.height/2 + (Math.random()*8-4))+'px';
+          swarm.appendChild(p);
+          setTimeout(()=>p.remove(),900);
+        }
+      }
+      setInterval(()=>{ if(document.hasFocus()) ping() }, 8000 + Math.random()*3000);
+      btn.addEventListener('mouseenter',()=>burst(10));
+      btn.addEventListener('click',()=>burst(14));
+      setTimeout(ping,1800);
+    })();
+
+    /* Rotating two-word status phrases — ~10s per phrase, auto-size */
+    (function rotatingStatus(){
+      const status=document.getElementById('status');
+      const phrases=[
+        'status: applying updates','status: fixing lines','status: catching bugs','status: compiling assets','status: migrating data',
+        'status: upgrading nodes','status: warming caches','status: seeding databases','status: pruning logs','status: syncing shards',
+        'status: verifying checksums','status: tuning queries','status: refreshing tokens','status: rolling restarts','status: building pipelines'
+      ];
+      let idx=0;
+      function typeText(text, onDone){
+        status.textContent=''; let i=0; const perChar=100;
+        const timer=setInterval(()=>{
+          status.textContent=text.slice(0,i++);
+          if(i>text.length){ clearInterval(timer); if(onDone) onDone(perChar*text.length); }
+        },perChar);
+      }
+      function cycle(){
+        const t=phrases[idx%phrases.length];
+        typeText(t,(typedTime)=>{
+          const hold=Math.max(0,10000-typedTime);
+          setTimeout(()=>{ idx++; cycle(); },hold);
+        });
+      }
+      cycle();
+    })();
+
+    /* CLICKER GAME */
+    (function clicker(){
+      const target=document.getElementById('clicker-target');
+      const floaters=document.getElementById('clicker-floaters');
+      const scoreEl=document.getElementById('score-num');
+      const cpsEl=document.getElementById('cps-num');
+      const pcEl=document.getElementById('pc-num');
+
+      const b1=document.getElementById('shop1-btn'); const c1=document.getElementById('shop1-cost');
+      const b2=document.getElementById('shop2-btn'); const c2=document.getElementById('shop2-cost');
+      const b3=document.getElementById('shop3-btn'); const c3=document.getElementById('shop3-cost');
+      const b4=document.getElementById('shop4-btn'); const c4=document.getElementById('shop4-cost');
+
+      let score=0;
+      let perClick=1;
+      let baseCps=0;
+      let cpsBonus=0; // % bonus
+      let running=true;
+      let last=performance.now();
+
+      // save/load
+      const saveKey='synthx_clicker_v1';
+      try{
+        const saved=JSON.parse(localStorage.getItem(saveKey)||'null');
+        if(saved){
+          score=saved.score||0; perClick=saved.perClick||1; baseCps=saved.baseCps||0; cpsBonus=saved.cpsBonus||0;
+          c1.textContent=saved.cost1||10; c2.textContent=saved.cost2||15; c3.textContent=saved.cost3||50; c4.textContent=saved.cost4||200;
+        }
+      }catch(_){}
+      function persist(){
+        localStorage.setItem(saveKey, JSON.stringify({
+          score, perClick, baseCps, cpsBonus,
+          cost1:+c1.textContent, cost2:+c2.textContent, cost3:+c3.textContent, cost4:+c4.textContent
+        }));
+      }
+
+      function fmt(n){ return Math.floor(n).toLocaleString() }
+      function effectiveCps(){ return baseCps * (1 + cpsBonus) }
+      function refreshUI(){
+        scoreEl.textContent=fmt(score);
+        cpsEl.textContent=effectiveCps().toFixed(1);
+        pcEl.textContent=fmt(perClick);
+        const s=score;
+        b1.disabled = s < +c1.textContent;
+        b2.disabled = s < +c2.textContent;
+        b3.disabled = s < +c3.textContent;
+        b4.disabled = s < +c4.textContent;
+      }
+      refreshUI();
+
+      function addScore(n, x, y){
+        score += n; refreshUI(); persist();
+        if(x!=null && y!=null){
+          const f=document.createElement('div');
+          f.id='fl-'+Math.random().toString(36).slice(2); f.className='float-label';
+          f.textContent='+'+n;
+          f.style.left=x+'px'; f.style.top=y+'px';
+          floaters.appendChild(f); setTimeout(()=>f.remove(),900);
+        }
+      }
+
+      function clickBurst(evt){
+        const rect=target.getBoundingClientRect();
+        const x=evt.clientX-rect.left, y=evt.clientY-rect.top;
+        addScore(perClick, x, y);
+      }
+      target.addEventListener('click', clickBurst);
+
+      // shop
+      b1.addEventListener('click', ()=>{
+        const cost=+c1.textContent;
+        if(score>=cost){ score-=cost; baseCps+=1; c1.textContent=Math.ceil(cost*1.35); refreshUI(); persist(); }
+      });
+      b2.addEventListener('click', ()=>{
+        const cost=+c2.textContent;
+        if(score>=cost){ score-=cost; perClick+=1; c2.textContent=Math.ceil(cost*1.45); refreshUI(); persist(); }
+      });
+      b3.addEventListener('click', ()=>{
+        const cost=+c3.textContent;
+        if(score>=cost){ score-=cost; cpsBonus+=0.10; c3.textContent=Math.ceil(cost*1.6); refreshUI(); persist(); }
+      });
+      b4.addEventListener('click', ()=>{
+        const cost=+c4.textContent;
+        if(score>=cost){ score-=cost; perClick=Math.max(1, perClick*2); c4.textContent=Math.ceil(cost*2.0); refreshUI(); persist(); }
+      });
+
+      // loop
+      function step(t){
+        const dt=Math.min(0.2,(t-last)/1000); last=t;
+        if(running){
+          const gain = effectiveCps()*dt;
+          if(gain>0){ score += gain; refreshUI(); }
+        }
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+
+      document.addEventListener('visibilitychange',()=>{
+        running = document.visibilityState==='visible';
+        last=performance.now();
+      });
+
+      refreshUI();
+    })();
+
+    /* reduced motion */
+    (function reduceMotion(){
+      const mq=window.matchMedia('(prefers-reduced-motion: reduce)');
+      const bg=document.getElementById('bg-anim');
+      const ring=document.getElementById('ring-deco');
+      const sparks=document.getElementById('spark-layer');
+      const bgp=document.getElementById('bg-particles');
+      function apply(){
+        if(mq.matches){
+          bg.style.animation='none';
+          ring.style.animation='none';
+          sparks.style.display='none';
+          bgp.style.display='none';
+        }
+      }
+      mq.addEventListener?.('change',apply); apply();
+    })();
+  </script>
+</body>
+</html>
